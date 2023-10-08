@@ -21,19 +21,3 @@ fun <T> eval(exec: () -> T): Either<Failure, T> {
         Failure.GenericFailure(it)
     }
 }
-
-fun <T> Either<Failure, T>.getResultOrThrow(): T = this.fold(
-    { failure ->
-        throw mapFailureToException(failure)
-    },
-) {
-    it
-}
-
-private fun mapFailureToException(failure: Failure): Throwable {
-    return when (failure) {
-        is Failure.GenericFailure -> RuntimeException(failure.message)
-        is Failure.InvalidStateFailure -> IllegalStateException(failure.message)
-        is Failure.ValidationFailure -> IllegalArgumentException(failure.message)
-    }
-}

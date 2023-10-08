@@ -93,11 +93,10 @@ class UserServiceTest {
             .deleteById(existingUser.id)
 
         // when
-        assertThatThrownBy {
-            userService.deleteUser(existingUser.id.getIdValue().shouldBeRight())
-        }.isInstanceOf(RuntimeException::class.java)
+        val actual = userService.deleteUser(existingUser.id.getIdValue().shouldBeRight())
 
         // then
+        assertThat(actual.isLeft()).isTrue()
         assertThat(userRepository.findById(existingUser.id).shouldBeRight()).isNotNull()
         assertThat(accountRepository.findById(existingAccount.id).shouldBeRight()).isNotNull()
     }
@@ -125,11 +124,10 @@ class UserServiceTest {
             .deleteByUserId(existingUser.id)
 
         // when
-        assertThatThrownBy {
-            userService.deleteUser(existingUser.id.getIdValue().shouldBeRight())
-        }.isInstanceOf(RuntimeException::class.java)
+        val actual = userService.deleteUser(existingUser.id.getIdValue().shouldBeRight())
 
         // then
+        assertThat(actual.isLeft()).isTrue()
         assertThat(userRepository.findById(existingUser.id).shouldBeRight()).isNotNull()
         assertThat(accountRepository.findById(existingAccount.id).shouldBeRight()).isNotNull()
     }

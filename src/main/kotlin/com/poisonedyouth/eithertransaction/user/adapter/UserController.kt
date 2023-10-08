@@ -1,7 +1,7 @@
 package com.poisonedyouth.eithertransaction.user.adapter
 
-import com.poisonedyouth.eithertransaction.common.getResultOrThrow
-import com.poisonedyouth.eithertransaction.common.toResponseEntity
+import arrow.core.Either
+import com.poisonedyouth.eithertransaction.common.respondFailure
 import com.poisonedyouth.eithertransaction.user.port.UserUseCase
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -24,39 +24,72 @@ class UserController(
 
     @PostMapping("/user")
     fun createNewUser(@RequestBody userDto: NewUserDto): ResponseEntity<Any> {
-        return try {
-            val createdUser = userUseCase.createUser(
-                name = userDto.name,
-                email = userDto.email,
-                birthDate = userDto.birthDate
-            ).getResultOrThrow()
-            ResponseEntity(createdUser.toUserDto().getResultOrThrow(), HttpStatus.CREATED)
-        } catch (e: Exception) {
-            logger.error("Failed to create user '$userDto'", e)
-            e.toResponseEntity()
-        }
+        val userResult = userUseCase.createUser(
+            name = userDto.name,
+            email = userDto.email,
+            birthDate = userDto.birthDate
+        )
+        return when (userResult) {
+            is Either.Left -> {
+                logger.error("Failed to create user '$userDto'")
+                userResult.value.respondFailure()
+            }
 
+            is Either.Right -> {
+                when (val userDtoResult = userResult.value.toUserDto()) {
+                    is Either.Left -> {
+                        userDtoResult.value.respondFailure()
+                    }
+
+                    is Either.Right -> {
+                        logger.info("Successfully created user '$userDto'")
+                        ResponseEntity(userDtoResult, HttpStatus.CREATED)
+                    }
+                }
+            }
+        }
     }
 
     @GetMapping("/user")
     fun getUser(@RequestParam userId: Int): ResponseEntity<Any> {
-        return try {
-            val user = userUseCase.getUser(userId).getResultOrThrow()
-            ResponseEntity(user?.toUserDto()?.getResultOrThrow(), HttpStatus.OK)
-        } catch (e: Exception) {
-            logger.error("Failed to get user with id '$userId'", e)
-            e.toResponseEntity()
+        return when (val userResult = userUseCase.getUser(userId)) {
+            is Either.Left -> {
+                logger.error("Failed to get user with id '$userId'")
+                userResult.value.respondFailure()
+            }
+
+            is Either.Right -> {
+                when (val userDtoResult = userResult.value?.toUserDto()) {
+                    is Either.Left -> {
+                        userDtoResult.value.respondFailure()
+                    }
+
+                    is Either.Right -> {
+                        logger.info("Successfully got user with id '$userId'")
+                        ResponseEntity(userDtoResult.value, HttpStatus.OK)
+                    }
+
+                    null -> {
+                        logger.info("No user with id '$userId' exist.")
+                        ResponseEntity(HttpStatus.NOT_FOUND)
+                    }
+                }
+
+            }
         }
+
     }
 
     @DeleteMapping("/user")
     fun deleteUser(@RequestParam userId: Int): ResponseEntity<Any> {
-        return try {
-            userUseCase.deleteUser(userId).getResultOrThrow()
-            ResponseEntity(HttpStatus.OK)
-        } catch (e: Exception) {
-            logger.error("Failed to delete user with id '$userId'", e)
-            e.toResponseEntity()
+        return when (val userResult = userUseCase.deleteUser(userId)) {
+            is Either.Left -> {
+                logger.error("Failed to delete user with id '$userId'")
+                userResult.value.respondFailure()
+            }
+
+            is Either.Right ->
+                ResponseEntity(HttpStatus.OK)
         }
     }
 }
