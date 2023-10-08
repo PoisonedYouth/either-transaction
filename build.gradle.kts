@@ -26,6 +26,8 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-java-time:0.44.0")
     runtimeOnly("com.h2database:h2:2.2.224")
     implementation("com.zaxxer:HikariCP:5.0.1")
+    implementation(platform("io.arrow-kt:arrow-stack:1.2.1"))
+    implementation("io.arrow-kt:arrow-core")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.1.0")
 }

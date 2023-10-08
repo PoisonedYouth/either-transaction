@@ -1,5 +1,6 @@
 package com.poisonedyouth.eithertransaction.user.adapter
 
+import com.poisonedyouth.eithertransaction.common.getResultOrThrow
 import com.poisonedyouth.eithertransaction.common.toResponseEntity
 import com.poisonedyouth.eithertransaction.user.port.UserUseCase
 import org.slf4j.Logger
@@ -28,8 +29,8 @@ class UserController(
                 name = userDto.name,
                 email = userDto.email,
                 birthDate = userDto.birthDate
-            )
-            ResponseEntity(createdUser.toUserDto(), HttpStatus.CREATED)
+            ).getResultOrThrow()
+            ResponseEntity(createdUser.toUserDto().getResultOrThrow(), HttpStatus.CREATED)
         } catch (e: Exception) {
             logger.error("Failed to create user '$userDto'", e)
             e.toResponseEntity()
@@ -40,8 +41,8 @@ class UserController(
     @GetMapping("/user")
     fun getUser(@RequestParam userId: Int): ResponseEntity<Any> {
         return try {
-            val user = userUseCase.getUser(userId)
-            ResponseEntity(user?.toUserDto(), HttpStatus.OK)
+            val user = userUseCase.getUser(userId).getResultOrThrow()
+            ResponseEntity(user?.toUserDto()?.getResultOrThrow(), HttpStatus.OK)
         } catch (e: Exception) {
             logger.error("Failed to get user with id '$userId'", e)
             e.toResponseEntity()
@@ -51,7 +52,7 @@ class UserController(
     @DeleteMapping("/user")
     fun deleteUser(@RequestParam userId: Int): ResponseEntity<Any> {
         return try {
-            userUseCase.deleteUser(userId)
+            userUseCase.deleteUser(userId).getResultOrThrow()
             ResponseEntity(HttpStatus.OK)
         } catch (e: Exception) {
             logger.error("Failed to delete user with id '$userId'", e)

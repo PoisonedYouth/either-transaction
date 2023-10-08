@@ -1,6 +1,9 @@
 package com.poisonedyouth.eithertransaction.account.adapter
 
+import arrow.core.Either
+import arrow.core.raise.either
 import com.poisonedyouth.eithertransaction.account.domain.Account
+import com.poisonedyouth.eithertransaction.common.Failure
 
 data class NewAccountDto(
     val name: String,
@@ -14,9 +17,11 @@ data class AccountDto(
     val balance: Int
 )
 
-fun Account.toAccountDto() = AccountDto(
-    id = this.id.getIdValue(),
-    name = this.name.value,
-    userId = this.userId.getIdValue(),
-    balance = this.balance
-)
+fun Account.toAccountDto(): Either<Failure, AccountDto> = either {
+    AccountDto(
+        id = this@toAccountDto.id.getIdValue().bind(),
+        name = this@toAccountDto.name.value,
+        userId = this@toAccountDto.userId.getIdValue().bind(),
+        balance = this@toAccountDto.balance
+    )
+}

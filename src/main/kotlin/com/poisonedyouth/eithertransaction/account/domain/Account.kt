@@ -1,5 +1,10 @@
 package com.poisonedyouth.eithertransaction.account.domain
 
+import arrow.core.Either
+import arrow.core.raise.either
+import arrow.core.raise.ensure
+import arrow.core.right
+import com.poisonedyouth.eithertransaction.common.Failure
 import com.poisonedyouth.eithertransaction.user.domain.UserId
 
 data class Account(
@@ -10,29 +15,35 @@ data class Account(
 )
 
 sealed interface AccountId {
-    fun getIdValue(): Int
+    fun getIdValue(): Either<Failure, Int>
 }
 
 object EmptyAccountId : AccountId {
-    override fun getIdValue(): Int {
-        error("AccountId not yet set.")
+    override fun getIdValue(): Either<Failure, Int> = either {
+        raise(Failure.InvalidStateFailure("AccountId not yet set."))
     }
 }
 
 @JvmInline
-value class IntAccountId(val value: Int) : AccountId {
-    init {
-        require(value > 0) { "Account id must be positive" }
+value class IntAccountId private constructor(private val value: Int) : AccountId {
+    override fun getIdValue(): Either<Failure, Int> {
+        return value.right()
     }
 
-    override fun getIdValue(): Int {
-        return value
+    companion object {
+        operator fun invoke(value: Int): Either<Failure, IntAccountId> = either {
+            ensure(value > 0) { Failure.ValidationFailure("Account id must be positive") }
+            IntAccountId(value)
+        }
     }
 }
 
 @JvmInline
-value class AccountName(val value: String) {
-    init {
-        require(value.length in 3..50) { "Account name must be between 3 and 50 characters" }
+value class AccountName private constructor(val value: String) {
+    companion object {
+        operator fun invoke(value: String): Either<Failure, AccountName> = either {
+            ensure(value.length in 3..50) { Failure.ValidationFailure("Account name must be between 3 and 50 characters") }
+            AccountName(value)
+        }
     }
 }

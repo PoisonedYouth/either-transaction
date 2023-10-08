@@ -1,6 +1,7 @@
 package com.poisonedyouth.eithertransaction.account.adapter
 
 import com.poisonedyouth.eithertransaction.account.port.AccountUseCase
+import com.poisonedyouth.eithertransaction.common.getResultOrThrow
 import com.poisonedyouth.eithertransaction.common.toResponseEntity
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -24,8 +25,8 @@ class AccountController(
             val createdAccount = accountUseCase.createAccount(
                 name = accountDto.name,
                 userId = accountDto.userId
-            )
-            ResponseEntity(createdAccount.toAccountDto(), HttpStatus.CREATED)
+            ).getResultOrThrow()
+            ResponseEntity(createdAccount.toAccountDto().getResultOrThrow(), HttpStatus.CREATED)
         } catch (e: Exception) {
             logger.error("Failed to create account '$accountDto'", e)
             e.toResponseEntity()
