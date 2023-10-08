@@ -19,30 +19,33 @@ import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import org.springframework.stereotype.Repository
-import org.springframework.transaction.annotation.Transactional
 
 @Repository
-@Transactional
 class ExposedAccountRepository : AccountRepository {
     override fun save(account: Account): Either<Failure, Account> = either {
         val existingAccount = findById(account.id).bind()
         eval {
             if (existingAccount == null) {
-                val id = AccountTable.insertAndGetId {
-                    it[name] = account.name.value
-                    it[userId] = account.userId.getIdValue().bind()
-                    it[balance] = account.balance
+                val id = transaction {
+                    AccountTable.insertAndGetId {
+                        it[name] = account.name.value
+                        it[userId] = account.userId.getIdValue().bind()
+                        it[balance] = account.balance
+                    }
                 }
                 account.copy(
                     id = IntAccountId(id.value).bind()
                 )
             } else {
-                AccountTable.update({ AccountTable.id eq account.id.getIdValue().bind() }) {
-                    it[name] = account.name.value
-                    it[userId] = account.userId.getIdValue().bind()
-                    it[balance] = account.balance
+                transaction {
+                    AccountTable.update({ AccountTable.id eq account.id.getIdValue().bind() }) {
+                        it[name] = account.name.value
+                        it[userId] = account.userId.getIdValue().bind()
+                        it[balance] = account.balance
+                    }
                 }
                 account
             }
@@ -57,15 +60,17 @@ class ExposedAccountRepository : AccountRepository {
 
             else -> {
                 eval {
-                    AccountTable.select { AccountTable.id eq id.getIdValue().bind() }
-                        .map {
-                            Account(
-                                id = IntAccountId(it[AccountTable.id].value).bind(),
-                                name = AccountName(it[AccountTable.name]).bind(),
-                                userId = IntUserId(it[AccountTable.userId].value).bind(),
-                                balance = it[AccountTable.balance]
-                            )
-                        }.firstOrNull()
+                    transaction {
+                        AccountTable.select { AccountTable.id eq id.getIdValue().bind() }
+                            .map {
+                                Account(
+                                    id = IntAccountId(it[AccountTable.id].value).bind(),
+                                    name = AccountName(it[AccountTable.name]).bind(),
+                                    userId = IntUserId(it[AccountTable.userId].value).bind(),
+                                    balance = it[AccountTable.balance]
+                                )
+                            }.firstOrNull()
+                    }
                 }.bind()
             }
         }
@@ -73,13 +78,17 @@ class ExposedAccountRepository : AccountRepository {
 
     override fun deleteById(id: AccountId): Either<Failure, Unit> = either {
         eval {
-            AccountTable.deleteWhere { AccountTable.id eq id.getIdValue().bind() }
+            transaction {
+                AccountTable.deleteWhere { AccountTable.id eq id.getIdValue().bind() }
+            }
         }
     }
 
     override fun deleteByUserId(userId: UserId): Either<Failure, Unit> = either {
         eval {
-            AccountTable.deleteWhere { AccountTable.userId eq userId.getIdValue().bind() }
+            transaction {
+                AccountTable.deleteWhere { AccountTable.userId eq userId.getIdValue().bind() }
+            }
         }.bind()
     }
 

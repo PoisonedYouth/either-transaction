@@ -12,6 +12,7 @@ import com.poisonedyouth.eithertransaction.user.domain.User
 import com.poisonedyouth.eithertransaction.user.domain.UserName
 import com.poisonedyouth.eithertransaction.user.port.UserRepository
 import com.poisonedyouth.eithertransaction.user.port.UserUseCase
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -34,12 +35,13 @@ class UserService(
         userRepository.findById(IntUserId(userid).bind()).bind()
     }
 
-    @Transactional
     override fun deleteUser(userid: Int): Either<Failure, Unit> = either {
-        val user = userRepository.findById(IntUserId(userid).bind()).bind()
-        if (user != null) {
-            accountUseCase.deleteAccounts(user.id).getResultOrThrow()
-            userRepository.deleteById(user.id).getResultOrThrow()
+        transaction {
+            val user = userRepository.findById(IntUserId(userid).bind()).bind()
+            if (user != null) {
+                accountUseCase.deleteAccounts(user.id).getResultOrThrow()
+                userRepository.deleteById(user.id).getResultOrThrow()
+            }
         }
     }
 }

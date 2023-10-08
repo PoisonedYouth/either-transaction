@@ -19,30 +19,33 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.javatime.date
 import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import org.springframework.stereotype.Repository
-import org.springframework.transaction.annotation.Transactional
 
-@Transactional
 @Repository
 class ExposedUserRepository : UserRepository {
     override fun save(user: User): Either<Failure, User> = either {
         val existingUser = findById(user.id).bind()
         eval {
             if (existingUser == null) {
-                val id = UserTable.insertAndGetId {
-                    it[name] = user.name.value
-                    it[email] = user.email.value
-                    it[birthDate] = user.birthDate.value
+                val id = transaction {
+                    UserTable.insertAndGetId {
+                        it[name] = user.name.value
+                        it[email] = user.email.value
+                        it[birthDate] = user.birthDate.value
+                    }
                 }
                 user.copy(
                     id = IntUserId(id.value).bind()
                 )
             } else {
-                UserTable.update({ UserTable.id eq user.id.getIdValue().bind() }) {
-                    it[name] = user.name.value
-                    it[email] = user.email.value
-                    it[birthDate] = user.birthDate.value
+                transaction {
+                    UserTable.update({ UserTable.id eq user.id.getIdValue().bind() }) {
+                        it[name] = user.name.value
+                        it[email] = user.email.value
+                        it[birthDate] = user.birthDate.value
+                    }
                 }
                 user
             }
@@ -57,15 +60,17 @@ class ExposedUserRepository : UserRepository {
 
             else -> {
                 eval {
-                    UserTable.select { UserTable.id eq id.getIdValue().bind() }
-                        .map {
-                            User(
-                                id = IntUserId(it[UserTable.id].value).bind(),
-                                name = UserName(it[UserTable.name]).bind(),
-                                email = Email(it[UserTable.email]).bind(),
-                                birthDate = BirthDate(it[UserTable.birthDate]).bind()
-                            )
-                        }.firstOrNull()
+                    transaction {
+                        UserTable.select { UserTable.id eq id.getIdValue().bind() }
+                            .map {
+                                User(
+                                    id = IntUserId(it[UserTable.id].value).bind(),
+                                    name = UserName(it[UserTable.name]).bind(),
+                                    email = Email(it[UserTable.email]).bind(),
+                                    birthDate = BirthDate(it[UserTable.birthDate]).bind()
+                                )
+                            }.firstOrNull()
+                    }
                 }.bind()
             }
         }
@@ -73,12 +78,16 @@ class ExposedUserRepository : UserRepository {
 
     override fun deleteById(id: UserId): Either<Failure, Unit> = either {
         eval {
-            UserTable.deleteWhere { UserTable.id eq id.getIdValue().bind() }
+            transaction {
+                UserTable.deleteWhere { UserTable.id eq id.getIdValue().bind() }
+            }
         }
     }
 
     override fun deleteAll(): Either<Failure, Unit> = eval {
-        UserTable.deleteAll()
+        transaction {
+            UserTable.deleteAll()
+        }
     }
 }
 
