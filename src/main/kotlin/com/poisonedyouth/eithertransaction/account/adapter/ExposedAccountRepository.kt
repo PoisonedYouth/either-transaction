@@ -9,7 +9,7 @@ import com.poisonedyouth.eithertransaction.account.domain.EmptyAccountId
 import com.poisonedyouth.eithertransaction.account.domain.IntAccountId
 import com.poisonedyouth.eithertransaction.account.port.AccountRepository
 import com.poisonedyouth.eithertransaction.common.Failure
-import com.poisonedyouth.eithertransaction.common.eval
+import com.poisonedyouth.eithertransaction.common.evalInTransaction
 import com.poisonedyouth.eithertransaction.user.adapter.UserTable
 import com.poisonedyouth.eithertransaction.user.domain.IntUserId
 import com.poisonedyouth.eithertransaction.user.domain.UserId
@@ -19,7 +19,6 @@ import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import org.springframework.stereotype.Repository
 
@@ -27,29 +26,27 @@ import org.springframework.stereotype.Repository
 class ExposedAccountRepository : AccountRepository {
     override fun save(account: Account): Either<Failure, Account> = either {
         val existingAccount = findById(account.id).bind()
-        eval {
-            if (existingAccount == null) {
-                val id = transaction {
-                    AccountTable.insertAndGetId {
-                        it[name] = account.name.value
-                        it[userId] = account.userId.getIdValue().bind()
-                        it[balance] = account.balance
-                    }
+        if (existingAccount == null) {
+            val id = evalInTransaction {
+                AccountTable.insertAndGetId {
+                    it[name] = account.name.value
+                    it[userId] = account.userId.getIdValue().bind()
+                    it[balance] = account.balance
                 }
-                account.copy(
-                    id = IntAccountId(id.value).bind()
-                )
-            } else {
-                transaction {
-                    AccountTable.update({ AccountTable.id eq account.id.getIdValue().bind() }) {
-                        it[name] = account.name.value
-                        it[userId] = account.userId.getIdValue().bind()
-                        it[balance] = account.balance
-                    }
+            }.bind()
+            account.copy(
+                id = IntAccountId(id.value).bind()
+            )
+        } else {
+            evalInTransaction {
+                AccountTable.update({ AccountTable.id eq account.id.getIdValue().bind() }) {
+                    it[name] = account.name.value
+                    it[userId] = account.userId.getIdValue().bind()
+                    it[balance] = account.balance
                 }
-                account
-            }
-        }.bind()
+            }.bind()
+            account
+        }
     }
 
     override fun findById(id: AccountId): Either<Failure, Account?> = either {
@@ -59,40 +56,34 @@ class ExposedAccountRepository : AccountRepository {
             }
 
             else -> {
-                eval {
-                    transaction {
-                        AccountTable.select { AccountTable.id eq id.getIdValue().bind() }
-                            .map {
-                                Account(
-                                    id = IntAccountId(it[AccountTable.id].value).bind(),
-                                    name = AccountName(it[AccountTable.name]).bind(),
-                                    userId = IntUserId(it[AccountTable.userId].value).bind(),
-                                    balance = it[AccountTable.balance]
-                                )
-                            }.firstOrNull()
-                    }
+                evalInTransaction {
+                    AccountTable.select { AccountTable.id eq id.getIdValue().bind() }
+                        .map {
+                            Account(
+                                id = IntAccountId(it[AccountTable.id].value).bind(),
+                                name = AccountName(it[AccountTable.name]).bind(),
+                                userId = IntUserId(it[AccountTable.userId].value).bind(),
+                                balance = it[AccountTable.balance]
+                            )
+                        }.firstOrNull()
                 }.bind()
             }
         }
     }
 
     override fun deleteById(id: AccountId): Either<Failure, Unit> = either {
-        eval {
-            transaction {
-                AccountTable.deleteWhere { AccountTable.id eq id.getIdValue().bind() }
-            }
+        evalInTransaction {
+            AccountTable.deleteWhere { AccountTable.id eq id.getIdValue().bind() }
         }
     }
 
     override fun deleteByUserId(userId: UserId): Either<Failure, Unit> = either {
-        eval {
-            transaction {
-                AccountTable.deleteWhere { AccountTable.userId eq userId.getIdValue().bind() }
-            }
+        evalInTransaction {
+            AccountTable.deleteWhere { AccountTable.userId eq userId.getIdValue().bind() }
         }.bind()
     }
 
-    override fun deleteAll(): Either<Failure, Unit> = eval {
+    override fun deleteAll(): Either<Failure, Unit> = evalInTransaction {
         AccountTable.deleteAll()
     }
 }

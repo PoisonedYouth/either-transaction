@@ -1,6 +1,7 @@
 package com.poisonedyouth.eithertransaction.common
 
 import arrow.core.Either
+import org.jetbrains.exposed.sql.transactions.transaction
 
 sealed interface Failure {
     val message: String
@@ -17,6 +18,17 @@ sealed interface Failure {
 fun <T> eval(exec: () -> T): Either<Failure, T> {
     return Either.catch {
         exec()
+    }.mapLeft {
+        Failure.GenericFailure(it)
+    }
+}
+
+
+fun <T> evalInTransaction(exec: () -> T): Either<Failure, T> {
+    return Either.catch {
+        transaction {
+            exec()
+        }
     }.mapLeft {
         Failure.GenericFailure(it)
     }
