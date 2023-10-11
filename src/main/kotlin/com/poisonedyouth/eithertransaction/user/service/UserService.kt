@@ -4,6 +4,7 @@ import arrow.core.Either
 import arrow.core.raise.either
 import com.poisonedyouth.eithertransaction.account.port.AccountUseCase
 import com.poisonedyouth.eithertransaction.common.Failure
+import com.poisonedyouth.eithertransaction.common.executeInTransaction
 import com.poisonedyouth.eithertransaction.user.adapter.UserDto
 import com.poisonedyouth.eithertransaction.user.adapter.toUserDto
 import com.poisonedyouth.eithertransaction.user.domain.BirthDate
@@ -13,7 +14,6 @@ import com.poisonedyouth.eithertransaction.user.domain.User
 import com.poisonedyouth.eithertransaction.user.domain.UserName
 import com.poisonedyouth.eithertransaction.user.port.UserRepository
 import com.poisonedyouth.eithertransaction.user.port.UserUseCase
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.springframework.stereotype.Service
 import java.time.LocalDate
 
@@ -35,8 +35,8 @@ class UserService(
         userRepository.findById(IntUserId(userid).bind()).bind()?.toUserDto()?.bind()
     }
 
-    override fun deleteUser(userid: Int): Either<Failure, Unit> = either {
-        transaction {
+    override fun deleteUser(userid: Int): Either<Failure, Unit> = executeInTransaction {
+        either {
             val user = userRepository.findById(IntUserId(userid).bind()).bind()
             if (user != null) {
                 accountUseCase.deleteAccounts(user.id).bind()
@@ -44,4 +44,5 @@ class UserService(
             }
         }
     }
+
 }

@@ -3,7 +3,6 @@ package com.poisonedyouth.eithertransaction.user.adapter
 import arrow.core.Either
 import arrow.core.raise.either
 import com.poisonedyouth.eithertransaction.common.Failure
-import com.poisonedyouth.eithertransaction.common.eval
 import com.poisonedyouth.eithertransaction.common.evalInTransaction
 import com.poisonedyouth.eithertransaction.user.domain.BirthDate
 import com.poisonedyouth.eithertransaction.user.domain.Email
@@ -20,7 +19,6 @@ import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.javatime.date
 import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import org.springframework.stereotype.Repository
 

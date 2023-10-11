@@ -15,15 +15,6 @@ sealed interface Failure {
     }
 }
 
-fun <T> eval(exec: () -> T): Either<Failure, T> {
-    return Either.catch {
-        exec()
-    }.mapLeft {
-        Failure.GenericFailure(it)
-    }
-}
-
-
 fun <T> evalInTransaction(exec: () -> T): Either<Failure, T> {
     return Either.catch {
         transaction {
@@ -31,5 +22,13 @@ fun <T> evalInTransaction(exec: () -> T): Either<Failure, T> {
         }
     }.mapLeft {
         Failure.GenericFailure(it)
+    }
+}
+
+fun <T> executeInTransaction(exec: () -> Either<Failure, T>): Either<Failure, T> {
+    return transaction {
+        exec().onLeft {
+            this.rollback()
+        }
     }
 }
