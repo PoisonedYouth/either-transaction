@@ -36,16 +36,9 @@ class UserController(
             }
 
             is Either.Right -> {
-                when (val userDtoResult = userResult.value.toUserDto()) {
-                    is Either.Left -> {
-                        userDtoResult.value.respondFailure()
-                    }
+                logger.info("Successfully created user '$userDto'")
+                ResponseEntity(userResult.value, HttpStatus.CREATED)
 
-                    is Either.Right -> {
-                        logger.info("Successfully created user '$userDto'")
-                        ResponseEntity(userDtoResult, HttpStatus.CREATED)
-                    }
-                }
             }
         }
     }
@@ -59,25 +52,16 @@ class UserController(
             }
 
             is Either.Right -> {
-                when (val userDtoResult = userResult.value?.toUserDto()) {
-                    is Either.Left -> {
-                        userDtoResult.value.respondFailure()
-                    }
-
-                    is Either.Right -> {
-                        logger.info("Successfully got user with id '$userId'")
-                        ResponseEntity(userDtoResult.value, HttpStatus.OK)
-                    }
-
-                    null -> {
-                        logger.info("No user with id '$userId' exist.")
-                        ResponseEntity(HttpStatus.NOT_FOUND)
-                    }
+                if (userResult.value != null) {
+                    logger.info("Successfully got user with id '$userId'")
+                    ResponseEntity(userResult.value, HttpStatus.OK)
+                } else {
+                    logger.info("No user with id '$userId' exist.")
+                    ResponseEntity(HttpStatus.NOT_FOUND)
                 }
-
             }
-        }
 
+        }
     }
 
     @DeleteMapping("/user")
