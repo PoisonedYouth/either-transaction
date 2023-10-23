@@ -1,6 +1,9 @@
 package com.poisonedyouth.eithertransaction.account.adapter
 
 import arrow.core.Either
+import arrow.core.flatMap
+import arrow.core.identity
+import arrow.core.raise.either
 import com.poisonedyouth.eithertransaction.account.port.AccountUseCase
 import com.poisonedyouth.eithertransaction.common.respondFailure
 import org.slf4j.Logger
@@ -20,29 +23,36 @@ class AccountController(
     private val logger: Logger = LoggerFactory.getLogger(AccountController::class.java)
 
     @PostMapping("/account")
-    fun createNewAccount(@RequestBody accountDto: NewAccountDto): ResponseEntity<Any> {
-        return when (val accountResult = accountUseCase.createAccount(
+    fun createNewAccount(@RequestBody accountDto: NewAccountDto): ResponseEntity<out Any> =
+        accountUseCase.createAccount(
             name = accountDto.name,
             userId = accountDto.userId
-        )) {
-            is Either.Left -> {
-                logger.error("Failed to create account '$accountDto'")
-                accountResult.value.respondFailure()
-            }
+        ).onLeft { logger.error("Failed to create account '$accountDto'") }
+            .flatMap { it.toAccountDto() }
+            .fold(
+                ifLeft = {
+                    logger.error("error $it")
+                    it.respondFailure()
+                },
+                ifRight = {
+                    ResponseEntity(it, HttpStatus.CREATED)
+                })
 
-            is Either.Right -> {
-                when (val accountDtoResult = accountResult.value.toAccountDto()) {
-                    is Either.Left -> {
-                        accountDtoResult.value.respondFailure()
-                    }
+    @PostMapping("/account2")
+    fun createNewAccount2(@RequestBody accountDto: NewAccountDto): ResponseEntity<out Any> =
+        either{
+            val accountResult  = accountUseCase.createAccount(
+            name = accountDto.name,
+            userId = accountDto.userId
+            ).bind()
+             accountResult.toAccountDto().bind()
+        } .fold(
+            ifLeft = {
+                logger.error("error $it")
+                it.respondFailure()
+            },
+            ifRight = {
+                ResponseEntity(it, HttpStatus.CREATED)
+            })
 
-                    is Either.Right -> {
-                        logger.info("Successfully created account '$accountDto'")
-                        ResponseEntity(accountDtoResult, HttpStatus.CREATED)
-                    }
-                }
-            }
-
-        }
-    }
 }
